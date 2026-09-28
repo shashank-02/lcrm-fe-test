@@ -1,0 +1,37 @@
+import { Suspense, lazy } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useAuth } from '@/store/auth';
+import { AppShell, ChangePasswordModal } from '@/components/layout/AppShell';
+import { LoginPage } from '@/pages/LoginPage';
+import { Spinner } from '@/components/ui';
+
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const LeadsPage = lazy(() => import('@/pages/leads/LeadsPage'));
+const LeadDetailPage = lazy(() => import('@/pages/leads/LeadDetailPage'));
+const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
+const AdminRoutes = lazy(() => import('@/pages/admin/AdminRoutes'));
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const token = useAuth((s) => s.accessToken); const user = useAuth((s) => s.user);
+  const loc = useLocation();
+  if (!token || !user) return <Navigate to="/login" replace state={{ from: loc.pathname + loc.search }} />;
+  return <>{children}<ChangePasswordModal open={!!user.mustChangePassword} onClose={() => undefined} forced /></>;
+}
+
+const Loading = () => <div className="flex justify-center py-20"><Spinner /></div>;
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route element={<RequireAuth><AppShell /></RequireAuth>}>
+        <Route index element={<Suspense fallback={<Loading />}><DashboardPage /></Suspense>} />
+        <Route path="leads" element={<Suspense fallback={<Loading />}><LeadsPage /></Suspense>} />
+        <Route path="leads/:id" element={<Suspense fallback={<Loading />}><LeadDetailPage /></Suspense>} />
+        <Route path="reports" element={<Suspense fallback={<Loading />}><ReportsPage /></Suspense>} />
+        <Route path="admin/*" element={<Suspense fallback={<Loading />}><AdminRoutes /></Suspense>} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
